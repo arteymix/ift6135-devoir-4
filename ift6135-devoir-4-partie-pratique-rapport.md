@@ -27,28 +27,20 @@ l'architecture et des techniques utilisés pour DCGAN [@http://zotero.org/users/
 En particulier, nous avons utilisé une activation sigmoïde pour reconstruire le
 spectre RGB du générateur normalisé sur l'intervalle $[0, 1]$.
 
-Couche      Détails
-------      -------
-conv2d      32 kernel $3 \times 3$
-conv2d      32 kernel $3 \times 3$, strides 2
-max pooling strides 2
-conv2d      64 kernel $3 \times 3$
-conv2d      64 kernel $3 \times 3$, strides 2
-max pooling strides 2
+Couche Détails
+------ -------
+conv2d 128  kernel $5 \times 5$ strides 2
+conv2d 256  kernel $5 \times 5$ strides 2
+conv2d 512  kernel $5 \times 5$ strides 2
+conv2d 1024 kernel $5 \times 5$ strides 2
 flatten
-dense       100 avec activation Tanh
 
 : Architecture de l'encodeur \label{table:1}
 
-<<<<<<< HEAD
-Le décodeur suit l'architecture suivante:
-=======
-L'encodeur utilise une activation Tanh telle que décrite dans le tableau
-\ref{table:1}. Nous avons eu des problèmes avec l'activation ReLU qui faisait
-parfois exploser la variance de l'inférence variatonelle.
+Toutes les convolution de la table \ref{table:1} utilisent la normalisation par
+lot et une activation LeakyReLU.
 
 Le décodeur possède l'architecture générale suivante:
->>>>>>> 17ef574d0280117c9589a7a29d01696a0ad6223b
 
 Couche     Détails
 ------     -------
@@ -61,7 +53,6 @@ upscaling  implementation-dependant
 deconv2d   32 kernel $3 \times 3$
 
 : Architecture du décodeur
-
 
  Nous avons empilé 2 convolutions avec 1 max pooling.
 
