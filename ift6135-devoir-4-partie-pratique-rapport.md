@@ -9,31 +9,31 @@ bibliography: bib.json
 # Generating Faces
 
 Nous avons traité les images avec skimage en appliquant un bruit $Uniform(0,1)$
-et un rescaling entre $[0, 1]$ afin de pouvoir considérer les canaux comme des
-probabilités d'émission.
+et une normalisation sur 256.
 
-![](figures/preprocessing-color-distribution-histogram.png)
+![Histogramme de la distribution des valeurs à travers le spectre RGB.\label{figure:1}](figures/preprocessing-color-distribution-histogram.png)
 
 Nous remarquons un léger biais vers les valeurs de saturation des canaux
-\ref{figure:1}, ce qui est expliqué par des régions particulièrement sombre des
-images.
+\ref{figure:1}, ce qui est expliqué par des régions particulièrement sombres et
+claires des images.
 
 # Model
 
 Nous avons implanté l'auto-encodeur variationel.
 
 Pour reconstruire des images de bonne qualité, nous nous sommes inspirés de
-l'architecture et des techniques utilisés pour DCGAN [@http://zotero.org/users/3733213/items/3WJPTN3T].
+l'architecture utilisée par Deep Feature Consistent Variational Autoencoder [@http://zotero.org/users/3733213/items/H5F7HPGA].
 En particulier, nous avons utilisé une activation sigmoïde pour reconstruire le
-spectre RGB du générateur normalisé sur l'intervalle $[0, 1]$.
+spectre RGB du générateur normalisé sur l'intervalle $[0, 1]$, de la
+normalisation par lot et des activations LeakyReLU.
 
-Couche Détails
------- -------
-conv2d 128  kernel $5 \times 5$ strides 2
-conv2d 256  kernel $5 \times 5$ strides 2
-conv2d 512  kernel $5 \times 5$ strides 2
-conv2d 1024 kernel $5 \times 5$ strides 2
-flatten
+Couche  Détails
+------  -------
+conv2d  32 kernel $4 \times 4$ strides 2
+conv2d  64 kernel $4 \times 4$ strides 2
+conv2d  128 kernel $4 \times 4$ strides 2
+conv2d  256 kernel $4 \times 4$ strides 2
+flatten 4096 unités
 
 : Architecture de l'encodeur \label{table:1}
 
@@ -44,105 +44,113 @@ Le décodeur possède l'architecture générale suivante:
 
 Couche     Détails
 ------     -------
-dense      $W_{100 \times 16 384} + b_{16 384}$
-reshape    $16 384 \rightarrow 16 \times 16 \times 64$
-<<<<<<< HEAD
-upscaling  implementation-dependant
-deconv2d   32 kernel $3 \times 3$
-upscaling  implementation-dependant
-deconv2d   32 kernel $3 \times 3$
+dense      4096 unités
+reshape    $4096 \rightarrow 256 \times 4 \times 4$
+upsampling dépend de l'implémentation
+conv2d     128 kernel $3 \times 3$
+upsampling dépend de l'implémentation
+conv2d     64 kernel $3 \times 3$
+upsampling dépend de l'implémentation
+conv2d     32 kernel $3 \times 3$
+upsampling dépend de l'implémentation
+conv2d     3 kernel $3 \times 3$ avec activation sigmoïde
 
 : Architecture du décodeur
 
- Nous avons empilé 2 convolutions avec 1 max pooling.
-
- Nous avons également essayé la normalisation par lot pour accélérer
- l'entraînement, mais avons noté que cette approche avait tendance à corrompre
- les images produites par le décodeur.
-
-=======
-upsampling dépend de l'implémentation
-deconv2d   32 kernel $3 times 3$
-upsampling dépend de l'implémentation
-deconv2d   3 kernel $3 \times 3$
-
-: Architecture du décodeur
+Toutes les convolutions du décodeur, à l'exception de la dernière, utilise la
+normalisation par lot et une activation LeakyReLU.
 
 L'upsampling utilisé dépend du type de décodeur:
 
  - déconvolution striée avec kernel $3 \times 3$ strides 2
- - interpolation du plus-proche-voisin avec facteur 2 et déconvolution 2d avec
- kernel $3 \times 3$
- - interpolation bilinéaire avec facteur 2 et déconvolution 2d avec
- kernel $3 \times 3$
+ - interpolation du plus-proche-voisin avec facteur 2
+ - interpolation bilinéaire avec facteur 2
 
-Nous avons également essayé la normalisation par lot pour accélérer
-l'entraînement, mais avons noté que cette approche avait tendance à corrompre
-les images produites par le décodeur. Par conséquent, nous l'avons seulement
-appliqué sur l'encodeur.
->>>>>>> 17ef574d0280117c9589a7a29d01696a0ad6223b
-
- Pour la déviation standard du postérieur, la sortie de l'encodeur correspond à son logarithme. Cela permet de s'assurer que la déviation standard est positive, et d'assurer un a priori uniforme sur le logarithme (a priori de Jeffrey pour un paramètre d'échelle). Ainsi:
-$$
- \log \sigma(z) = W_\sigma h + b,\\
- \mu(z) = W_\mu h + b.
-$$
-
-## 3. Comparaison des architectures
-
-L'upscaling utilisé dépend du type de décodeur. Nous avons comparé les trois approches suivantes:
-
- - déconvolutions striées
- - upsampling par le plus proche voisin
- - upsampling par interpolation bilinéaire
-
-Nous avons intégré l'interpolation du plus proche voisin[^resize_neighbor] et
-bilinéaire[^resize_bilinear] de Tensorflow. La déconvolution striée était déjà
-implémentée dans Keras.
+Les implémentations pour les interpolations[^resize_nearest][^resize_bilinear]
+sont fournies nativement par Tensorflow[@].
 
 [^resize_nearest]: https://www.tensorflow.org/api_docs/python/tf/image/resize_nearest
 [^resize_bilinear]: https://www.tensorflow.org/api_docs/python/tf/image/resize_bilinear
 
-Les trois modèles ont été entraînés sur l'ensemble d'entraînement avec un split de 33% pour la validation.
+Nous avons remarqué un gain majeur de l'utilisation de la normalisation par lot
+autant au niveau de l'encodeur et du décodeur.
 
-Résultats:
-INSERER IMAGES DE RECONSTRUCTION
+Pour la déviation standard du postérieur $q(z \mid x; \mu, \sigma)$, la sortie
+de l'encodeur correspond à son logarithme. Cela permet de s'assurer que la
+déviation standard est positive, et d'assurer un a priori uniforme sur le
+logarithme (a priori de Jeffrey pour un paramètre d'échelle). Ainsi:
 
- - déconvolution striée avec kernel $3 \times 3$ strides 2
+\begin{align}
+\log \sigma(z) = W_\sigma h + b,\\
+\mu(z) = W_\mu h + b.
+\end{align}
 
- - interpolation du plus-proche-voisin avec facteur 2
+## 3. Comparaison des architectures
 
- - interpolation bilinéaire avec facteur 2
+Les trois modèles ont été entraînés sur 1000 exemplaires de l'ensemble
+d'entraînement pour juger de la qualité des reconstructions.
+
+![Reconstructions des trois modèles de décodeur par rapport à l'image d'origine
+(première rangée). La déconvolution (deuxième rangée), l'interpolation par le
+plus-proche-voisin (troisième rangée) et l'interpolation bilinéaire (quatrième
+rangée) sont présentée.\label{figure:2}](figures/examples-of-reconstructions.png)
+
+On remarque que la déconvolution striée (voir figure \ref{figure:2}) donne les
+meilleurs résultats. L'interpolation bilinéaire a un effet de *smoothing* bien
+marqué, mais aucune des deux approches ne permet de reconstruire les détails
+fins.
+
+On note que la pénalisation Kullback-Leibler est bien appliqué dans la figure
+\ref{figure:3}. La divergence par rapport à la normale est dû au petit nombre
+d'époques d'entraînement.
 
 Le modèle XXX a été conservé pour l'évaluation des images générées.
 
-
 ## 4. Variantes
 
-IWAE: 5 importance samples.
-
-
+Nous avons implanté le *Importance Weighted Autoencoder*.
 
 ## 5. Évaluation qualitative
 
 ### (a) Échantillons visuels
-INSERER ECHANTILLONS: VAE vs IWAE
 
-Le IWAE fait mieux que le VAE vanille (moins flou, plus de diversité)?
+![Exemple de reconstructions par le VAE (deuxième rangée) et le IWAE (troisième rangée) après 20 époques sur l'ensemble d'entraînement.latent](figures/weighted-vae-vs-vae.png)
 
-Pourquoi? Plus $k$ (importance samples #) est grand, plus le variational gap est petit. Aussi, la variance de l'estimation de la ELBO diminue avec $k$. Une grande valeur de $k$ facilite la convergence.
+L'IWAE reconstruit beaucoup mieux les images que le VAE classique. On remarque
+en particulier que les détails fins comme les cheveux sont mieux reportés dans
+les exemplaires reconstruits.
+
+Nous avons également remarqué que même si il est plus coûteux à entraîner
+(environ 2 fois plus de temps par exemplaire), sa perte converge beaucoup plus
+rapidement.
+
+Pourquoi? Plus $k$ (importance samples #) est grand, plus le variational gap
+est petit. Aussi, la variance de l'estimation de la ELBO diminue avec $k$. Une
+grande valeur de $k$ facilite la convergence.
 
 ### (b) Taille de l'espace latent
-Les changements de taille de l'espace latent influencent-ils beaucoup le modèle?
+
+![](figures/weighted-vae-latent-space-exploration.png)
+
+Les changements de taille de l'espace latent influencent-ils beaucoup le
+modèle?
 
 Augmenter la taille de l'espace latent peut être utile si le modèle possède une capacité suffisante.
 
 ### (c) Interpolation dans l'espace latent
+
+![](figures/weighted-vae-latent-space-interpolation.png)
+
+![](figures/weighted-vae-input-space-interpolation.png)
+
 Interpolation dans $z$ vs interpolation dans $x$.
 
 Les échantillons interpolés dans $z$ donnent des images plus réalistes que les échantillons interpolés dans $x$. En effet, le support de $z$ correspond à un manifold dans l'espace de $x$, et le VAE cherche à faire correspondre à chaque point de l'espace latent un point possédant une probabilité non négligeable dans l'espace de $x$. Par contre, au sein de ce dernier, les images interpolées entre 2 points peuvent être très loin de la vraie distribution des $x$.
 
 ## 7. Évaluation quantitative (VAE)
+
+![Distribution de l'espace latent sur les exemplaires de l'ensemble d'entraînement.\label{figure:3}](figures/weighted-vae-latent-space-distribution.png)
+
 K=2000
 
 D = 64 x 64 x 3
