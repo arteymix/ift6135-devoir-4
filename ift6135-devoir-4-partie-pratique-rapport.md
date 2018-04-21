@@ -23,8 +23,7 @@ images.
 Nous avons implanté l'auto-encodeur variationel.
 
 Pour reconstruire des images de bonne qualité, nous nous sommes inspirés de
-l'architecture VGG-16 [@http://zotero.org/users/3733213/items/NU4NX8HZ] et des
-techniques utilisés pour DCGAN [@http://zotero.org/users/3733213/items/3WJPTN3T].
+l'architecture et des techniques utilisés pour DCGAN [@http://zotero.org/users/3733213/items/3WJPTN3T].
 En particulier, nous avons utilisé une activation sigmoïde pour reconstruire le
 spectre RGB du générateur normalisé sur l'intervalle $[0, 1]$.
 
