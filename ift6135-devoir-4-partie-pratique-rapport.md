@@ -80,10 +80,10 @@ de l'encodeur correspond à son logarithme. Cela permet de s'assurer que la
 déviation standard est positive, et d'assurer un a priori uniforme sur le
 logarithme (a priori de Jeffrey pour un paramètre d'échelle). Ainsi:
 
-\begin{align}
+$$
 \log \sigma(z) = W_\sigma h + b,\\
 \mu(z) = W_\mu h + b.
-\end{align}
+$$
 
 ## 3. Comparaison des architectures
 
@@ -91,24 +91,25 @@ Les trois modèles ont été entraînés sur 1000 exemplaires de l'ensemble
 d'entraînement pour juger de la qualité des reconstructions.
 
 ![Reconstructions des trois modèles de décodeur par rapport à l'image d'origine
-(première rangée). La déconvolution (deuxième rangée), l'interpolation par le
-plus-proche-voisin (troisième rangée) et l'interpolation bilinéaire (quatrième
-rangée) sont présentée.\label{figure:2}](figures/examples-of-reconstructions.png)
+(première rangée). La déconvolution (deuxième rangée), le suréchantillonnage par le plus-proche-voisin (troisième rangée) et le suréchantillonage bilinéaire (quatrième rangée) sont présentées. \label{figure:2}](figures/examples-of-reconstructions.png)
+
+La déconvolution est l'opération inverse de la convolution, tandis que le suréchantillonnage par le plus-proche-voisin et le suréchantillonnage bilinéaire sont des méthodes d'interpolation.
+
+L'interpolation a pour effet de reconstituer des images plus floues, puisque des valeurs proches sont assignées à des pixels proches spatialement. L'interpolation bilinéaire a notamment un effet de *smoothing* bien
+marqué, mais aucune des deux méthodes d'interpolation ne permet de reconstruire les détails fins.
 
 On remarque que la déconvolution striée (voir figure \ref{figure:2}) donne les
-meilleurs résultats. L'interpolation bilinéaire a un effet de *smoothing* bien
-marqué, mais aucune des deux approches ne permet de reconstruire les détails
-fins.
+meilleurs résultats, avec davantage de détails.
 
-On note que la pénalisation Kullback-Leibler est bien appliqué dans la figure
+On note que la pénalisation Kullback-Leibler est bien appliquée dans la figure
 \ref{figure:3}. La divergence par rapport à la normale est dû au petit nombre
 d'époques d'entraînement.
 
-Le modèle XXX a été conservé pour l'évaluation des images générées.
+L'architecture avec la déconvolution a été conservée pour les analyses suivantes.
 
 ## 4. Variantes
 
-Nous avons implanté le *Importance Weighted Autoencoder*.
+Nous avons implanté le *Importance Weighted Autoencoder* avec $k=5$.
 
 ## 5. Évaluation qualitative
 
@@ -118,24 +119,26 @@ Nous avons implanté le *Importance Weighted Autoencoder*.
 
 L'IWAE reconstruit beaucoup mieux les images que le VAE classique. On remarque
 en particulier que les détails fins comme les cheveux sont mieux reportés dans
-les exemplaires reconstruits.
+les exemplaires reconstruits. De plus, les contrastes des images originales sont mieux reproduits par l'IWAE: les couleurs claires sont plus claires, et les couleurs sombres, plus sombres.
 
-Nous avons également remarqué que même si il est plus coûteux à entraîner
+
+
+Plus $k$ (importance samples #) est grand, plus le variational gap est petit: la borne inférieure de l'évidence (ELBO) est plus proche de l'évidence lorsque $k>1$, i.e. l'approximation de la borne inférieure de l'évidence par l'IWAE est moins biaisée que celle du VAE.
+
+De plus, la variance de l'estimation de la ELBO diminue avec $k$, ce qui explique qu'une grande valeur de $k$ facilite la convergence.
+En effet, nous avons remarqué que même si l'IWAE est plus coûteux à entraîner
 (environ 2 fois plus de temps par exemplaire), sa perte converge beaucoup plus
-rapidement.
-
-Pourquoi? Plus $k$ (importance samples #) est grand, plus le variational gap
-est petit. Aussi, la variance de l'estimation de la ELBO diminue avec $k$. Une
-grande valeur de $k$ facilite la convergence.
+rapidement que celle du VAE.
 
 ### (b) Taille de l'espace latent
 
 ![](figures/weighted-vae-latent-space-exploration.png)
 
-Les changements de taille de l'espace latent influencent-ils beaucoup le
-modèle?
+Les images de chaque ligne de la figure ci-dessus sont données par la variation linéaire d'une variable de l'espace latent, pendant que toutes les autres variables sont tenues égales à 0.
 
-Augmenter la taille de l'espace latent peut être utile si le modèle possède une capacité suffisante.
+Au centre de l'espace latent, on trouve une image contenant un visage 'générique', un archétype d'un visage humain, avec des yeux, un nez et une bouche bien dessinés. Le reste de l'image est flou avec une couleur proche du gris, comme un mélange des fonbds de toutes les images de l'ensemble d'entraînement.
+
+Les images situées dans les colonnes extérieures à gauche et à droite sont tirées à 3 déviations standards du centre de l'espace latent. On remarque que ces images montrent des visages davantage personalisés.
 
 ### (c) Interpolation dans l'espace latent
 
@@ -147,7 +150,7 @@ donnaient pas des résultats convaincants.
 
 Dans la figure \ref{figure:5}, on voit qu'en utilisant $z$ pour interpoler, on
 fait littérallement varier l'orientation de la tête tandis que l'interpolation
-dans les $x$ n'est que *blend in* linéaire.
+dans les $x$ n'est qu'un *blend in* linéaire.
 
 Les échantillons interpolés dans $z$ donnent des images plus réalistes que les
 échantillons interpolés dans $x$. En effet, le support de $z$ correspond à un
@@ -160,8 +163,12 @@ entre 2 points peuvent être très loin de la vraie distribution des $x$.
 
 ![Distribution de l'espace latent sur les exemplaires de l'ensemble d'entraînement.\label{figure:3}](figures/weighted-vae-latent-space-distribution.png)
 
-K=2000
+L'évaluation quantitative des modèles est basée sur la mesure bpp en bits-par-pixel de l'opposé de la log-vraisemblance:
 
-D = 64 x 64 x 3
+$$ bpp = - \log p(x) + \log 256 \\
+= - \frac{\ln p(x)}{D \times \ln 2} + 8 \\
+\approx - \frac{ELBO}{D \times \ln 2} + 8.$$
 
-$bpp = \frac{\log p(x)}{\log 2 \times D}$
+où les logarithmes sont en base 2 et $D = 64 \times 64 \times 3$.
+
+$K=2000$.
