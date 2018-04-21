@@ -139,13 +139,22 @@ Augmenter la taille de l'espace latent peut être utile si le modèle possède u
 
 ### (c) Interpolation dans l'espace latent
 
-![](figures/weighted-vae-latent-space-interpolation.png)
+![Interpolation via l'espace latent (première rangée) et via l'espace des pixels (deuxième rangée).\label{figure:5}](figures/weighted-vae-latent-space-interpolation.png)
 
-![](figures/weighted-vae-input-space-interpolation.png)
+Nous avons interpolé en prenant des exemplaires de l'ensemble d'entraînement
+comme points pour l'espace latent puisque les échantillons aléatoires ne
+donnaient pas des résultats convaincants.
 
-Interpolation dans $z$ vs interpolation dans $x$.
+Dans la figure \ref{figure:5}, on voit qu'en utilisant $z$ pour interpoler, on
+fait littérallement varier l'orientation de la tête tandis que l'interpolation
+dans les $x$ n'est que *blend in* linéaire.
 
-Les échantillons interpolés dans $z$ donnent des images plus réalistes que les échantillons interpolés dans $x$. En effet, le support de $z$ correspond à un manifold dans l'espace de $x$, et le VAE cherche à faire correspondre à chaque point de l'espace latent un point possédant une probabilité non négligeable dans l'espace de $x$. Par contre, au sein de ce dernier, les images interpolées entre 2 points peuvent être très loin de la vraie distribution des $x$.
+Les échantillons interpolés dans $z$ donnent des images plus réalistes que les
+échantillons interpolés dans $x$. En effet, le support de $z$ correspond à un
+manifold dans l'espace de $x$, et le VAE cherche à faire correspondre à chaque
+point de l'espace latent un point possédant une probabilité non négligeable
+dans l'espace de $x$. Par contre, au sein de ce dernier, les images interpolées
+entre 2 points peuvent être très loin de la vraie distribution des $x$.
 
 ## 7. Évaluation quantitative (VAE)
 
