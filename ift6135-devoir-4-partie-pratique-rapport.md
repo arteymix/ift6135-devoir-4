@@ -1,12 +1,12 @@
 ---
 title: IFT6135 --- Devoir 4
-authors:
+author:
  - Guillaume Poirier-Morency
  - Augustin Schmidt
 bibliography: bib.json
 ---
 
-# Generating Faces
+# Générer des visages
 
 Nous avons traité les images avec skimage en appliquant un bruit $Uniform(0,1)$
 et une normalisation sur 256.
@@ -17,7 +17,7 @@ Nous remarquons un léger biais vers les valeurs de saturation des canaux
 \ref{figure:1}, ce qui est expliqué par des régions particulièrement sombres et
 claires des images.
 
-# Model
+# Modèle
 
 Nous avons implanté l'auto-encodeur variationel.
 
@@ -67,7 +67,7 @@ L'upsampling utilisé dépend du type de décodeur:
  - interpolation bilinéaire avec facteur 2
 
 Les implémentations pour les interpolations[^resize_nearest][^resize_bilinear]
-sont fournies nativement par Tensorflow[@].
+sont fournies nativement par Tensorflow[@http://zotero.org/users/3733213/items/J2JKPUPS].
 
 [^resize_nearest]: https://www.tensorflow.org/api_docs/python/tf/image/resize_nearest
 [^resize_bilinear]: https://www.tensorflow.org/api_docs/python/tf/image/resize_bilinear
@@ -85,18 +85,27 @@ $$
 \mu(z) = W_\mu h + b.
 $$
 
-## 3. Comparaison des architectures
+Dans tous les modèles, nous avons minimisé la perte $L^2$ à l'échelle du nombre
+de dimensions de l'image avec une pénalité Kullback-Leibler suivant une
+gaussienne isotropique sur l'espace latent.
+
+# Comparaison des architectures
 
 Les trois modèles ont été entraînés sur 1000 exemplaires de l'ensemble
 d'entraînement pour juger de la qualité des reconstructions.
 
 ![Reconstructions des trois modèles de décodeur par rapport à l'image d'origine
-(première rangée). La déconvolution (deuxième rangée), le suréchantillonnage par le plus-proche-voisin (troisième rangée) et le suréchantillonage bilinéaire (quatrième rangée) sont présentées. \label{figure:2}](figures/examples-of-reconstructions.png)
+(première rangée). La déconvolution (deuxième rangée), le suréchantillonnage
+par le plus-proche-voisin (troisième rangée) et le suréchantillonage bilinéaire
+(quatrième rangée) sont présentées.\label{figure:2}](figures/examples-of-reconstructions.png)
 
 La déconvolution est l'opération inverse de la convolution, tandis que le suréchantillonnage par le plus-proche-voisin et le suréchantillonnage bilinéaire sont des méthodes d'interpolation.
 
-L'interpolation a pour effet de reconstituer des images plus floues, puisque des valeurs proches sont assignées à des pixels proches spatialement. L'interpolation bilinéaire a notamment un effet de *smoothing* bien
-marqué, mais aucune des deux méthodes d'interpolation ne permet de reconstruire les détails fins.
+L'interpolation a pour effet de reconstituer des images plus floues, puisque
+des valeurs proches sont assignées à des pixels proches spatialement.
+L'interpolation bilinéaire a notamment un effet de *smoothing* bien marqué,
+mais aucune des deux méthodes d'interpolation ne permet de reconstruire les
+détails fins.
 
 On remarque que la déconvolution striée (voir figure \ref{figure:2}) donne les
 meilleurs résultats, avec davantage de détails.
@@ -107,42 +116,60 @@ d'époques d'entraînement.
 
 L'architecture avec la déconvolution a été conservée pour les analyses suivantes.
 
-## 4. Variantes
+# Variantes
 
 Nous avons implanté le *Importance Weighted Autoencoder* avec $k=5$.
 
-## 5. Évaluation qualitative
+# Évaluation qualitative
 
-### (a) Échantillons visuels
+## (a) Échantillons visuels
 
-![Exemple de reconstructions par le VAE (deuxième rangée) et le IWAE (troisième rangée) après 20 époques sur l'ensemble d'entraînement.latent](figures/weighted-vae-vs-vae.png)
+![Exemple de reconstructions par le VAE (deuxième rangée) et le IWAE (troisième
+rangée) après 20 époques sur l'ensemble
+d'entraînement.latent](figures/weighted-vae-vs-vae.png)
 
 L'IWAE reconstruit beaucoup mieux les images que le VAE classique. On remarque
 en particulier que les détails fins comme les cheveux sont mieux reportés dans
-les exemplaires reconstruits. De plus, les contrastes des images originales sont mieux reproduits par l'IWAE: les couleurs claires sont plus claires, et les couleurs sombres, plus sombres.
+les exemplaires reconstruits. De plus, les contrastes des images originales
+sont mieux reproduits par l'IWAE: les couleurs claires sont plus claires, et
+les couleurs sombres, plus sombres.
 
+Plus $k$ (importance samples #) est grand, plus le variational gap est petit:
+la borne inférieure de l'évidence (ELBO) est plus proche de l'évidence lorsque
+$k>1$, i.e. l'approximation de la borne inférieure de l'évidence par l'IWAE est
+moins biaisée que celle du VAE.
 
+De plus, la variance de l'estimation de la ELBO diminue avec $k$, ce qui
+explique qu'une grande valeur de $k$ facilite la convergence. En effet, nous
+avons remarqué que même si l'IWAE est plus coûteux à entraîner (environ 2 fois
+plus de temps par exemplaire), sa perte converge beaucoup plus rapidement que
+celle du VAE.
 
-Plus $k$ (importance samples #) est grand, plus le variational gap est petit: la borne inférieure de l'évidence (ELBO) est plus proche de l'évidence lorsque $k>1$, i.e. l'approximation de la borne inférieure de l'évidence par l'IWAE est moins biaisée que celle du VAE.
+## (b) Taille de l'espace latent
 
-De plus, la variance de l'estimation de la ELBO diminue avec $k$, ce qui explique qu'une grande valeur de $k$ facilite la convergence.
-En effet, nous avons remarqué que même si l'IWAE est plus coûteux à entraîner
-(environ 2 fois plus de temps par exemplaire), sa perte converge beaucoup plus
-rapidement que celle du VAE.
+![Exploration des 15 premières dimensions de l'espace latent.](figures/weighted-vae-latent-space-exploration.png)
 
-### (b) Taille de l'espace latent
+Les images de chaque ligne de la figure ci-dessus sont données par la variation
+linéaire d'une variable de l'espace latent entre $[-3, 3]$ déviations standard,
+pendant que toutes les autres variables sont tenues égales à 0.
 
-![](figures/weighted-vae-latent-space-exploration.png)
+Au centre de l'espace latent, on trouve une image contenant un visage
+'générique', un archétype d'un visage humain, avec des yeux, un nez et une
+bouche bien dessinés. Le reste de l'image est flou avec une couleur proche du
+gris, comme un mélange des fonbds de toutes les images de l'ensemble
+d'entraînement.
 
-Les images de chaque ligne de la figure ci-dessus sont données par la variation linéaire d'une variable de l'espace latent, pendant que toutes les autres variables sont tenues égales à 0.
+Les images situées dans les colonnes extérieures à gauche et à droite sont
+tirées à 3 déviations standards du centre de l'espace latent. On remarque que
+ces images montrent des arrières-plans, des chandails, des cheveux ou des
+expressions faciales plus marquées.
 
-Au centre de l'espace latent, on trouve une image contenant un visage 'générique', un archétype d'un visage humain, avec des yeux, un nez et une bouche bien dessinés. Le reste de l'image est flou avec une couleur proche du gris, comme un mélange des fonbds de toutes les images de l'ensemble d'entraînement.
+## (c) Interpolation dans l'espace latent
 
-Les images situées dans les colonnes extérieures à gauche et à droite sont tirées à 3 déviations standards du centre de l'espace latent. On remarque que ces images montrent des visages davantage personalisés.
-
-### (c) Interpolation dans l'espace latent
-
-![Interpolation via l'espace latent (première rangée) et via l'espace des pixels (deuxième rangée).\label{figure:5}](figures/weighted-vae-latent-space-interpolation.png)
+![Interpolation via l'espace latent (première rangée) et via l'espace des
+pixels (deuxième rangée). On remarque assez clairement dans la séquence
+d'images du haut que le modèle a assimilé la notion de rotation du
+visage.\label{figure:5}](figures/weighted-vae-latent-space-interpolation.png)
 
 Nous avons interpolé en prenant des exemplaires de l'ensemble d'entraînement
 comme points pour l'espace latent puisque les échantillons aléatoires ne
@@ -159,11 +186,15 @@ point de l'espace latent un point possédant une probabilité non négligeable
 dans l'espace de $x$. Par contre, au sein de ce dernier, les images interpolées
 entre 2 points peuvent être très loin de la vraie distribution des $x$.
 
-## 7. Évaluation quantitative (VAE)
+# Évaluation quantitative (VAE)
 
-![Distribution de l'espace latent sur les exemplaires de l'ensemble d'entraînement.\label{figure:3}](figures/weighted-vae-latent-space-distribution.png)
+![Distribution de l'espace latent sur les exemplaires de l'ensemble
+d'entraînement. On peut observer que la pénalisation Kullback-Leibler contraint
+l'espace latent à se rapprocher d'une gaussienne isotropique (montrée en
+bleu).\label{figure:3}](figures/weighted-vae-latent-space-distribution.png)
 
-L'évaluation quantitative des modèles est basée sur la mesure bpp en bits-par-pixel de l'opposé de la log-vraisemblance:
+L'évaluation quantitative des modèles est basée sur la mesure bpp en
+bits-par-pixel de l'opposé de la log-vraisemblance:
 
 $$ bpp = - \log p(x) + \log 256 \\
 = - \frac{\ln p(x)}{D \times \ln 2} + 8 \\
@@ -171,4 +202,9 @@ $$ bpp = - \log p(x) + \log 256 \\
 
 où les logarithmes sont en base 2 et $D = 64 \times 64 \times 3$.
 
-$K=2000$.
+Puisque nous avons mesurer l'erreur quadratique, nous ne pouvons pas reporter
+une log-vraisemblance. Par contre, nous reportons une MSE de 505.01 pour la
+reconstruction de l'ensemble d'entraînment, ce qui correspond à une erreur
+standard d'environ 20.27% et une divergence de Kullback-Leibler de 345.63 nats.
+
+# Références
